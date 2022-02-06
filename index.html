@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="robots" content="all" />
+	<meta name="theme-color" content="black" />
+	<meta name="description" content="Browser Version" />
+
+	<base href="./" />
+
+	<link rel="icon" href="./icon.svg" />
+	<link rel="manifest" href="./manifest.webmanifest" />
+	<link rel="apple-touch-icon" href="./icon.png" />
+
+	<title>Browser Version</title>
+
+	<style>
+		body {
+			font: 3rem system-ui;
+			margin: 0;
+			display: grid;
+			place-items: center;
+			inset: 0;
+			position: absolute;
+		}
+
+	</style>
+
+	<script type="module">
+		document.querySelector("version").textContent = (await navigator.userAgentData?.getHighEntropyValues?.([
+			"architecture", "bitness", "model", "platformVersion", "uaFullVersion",
+		]))?.uaFullVersion ?? ($ => $?.safariVersion ?? $?.version)(navigator.userAgent.match(/(Version\/(?<safariVersion>[\d.]+))|(\/(?<version>[\d.]+)$)/)?.groups);
+
+		{ /// service worker, update & PWA
+			const registerServiceWorker = () => navigator.serviceWorker?.register("./service-worker.js", { scope: "./", updateViaCache: "all" });
+			registerServiceWorker();
+
+			navigator.serviceWorker?.addEventListener("message", async ({ data }) => {
+				if (data.message === "updateAvailable") registerServiceWorker();
+			});
+
+			const checkReadyState = async () => {
+				if (document.readyState === "complete" && navigator.onLine) (await navigator.serviceWorker?.ready)?.active.postMessage({ message: "checkForUpdate" });
+			};
+			checkReadyState();
+			document.addEventListener("readystatechange", checkReadyState);
+		}
+	</script>
+</head>
+
+<body>
+	<noscript>
+		Please enable JavaScript to view this site.
+		<hr />
+	</noscript>
+
+	<version></version>
+</body>
+
+</html>
