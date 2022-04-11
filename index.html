@@ -3,17 +3,13 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="viewport" content="width=device-width" />
 	<meta name="color-scheme" content="dark light" />
 	<meta name="robots" content="all" />
 	<meta name="theme-color" content="black" />
-	<meta name="description" content="Browser Version" />
-
-	<base href="./" />
+	<meta name="description" content="A website that shows you the current version of your browser." />
 
 	<link rel="icon" href="./icon.svg" />
-	<link rel="manifest" href="./manifest.webmanifest" />
-	<link rel="apple-touch-icon" href="./icon.png" />
 
 	<title>Browser Version</title>
 
@@ -30,34 +26,35 @@
 	</style>
 
 	<script type="module">
-		document.querySelector("version").textContent = (await navigator.userAgentData?.getHighEntropyValues?.([
-			"architecture", "bitness", "model", "platformVersion", "uaFullVersion",
-		]))?.uaFullVersion ?? ($ => $?.safariVersion ?? $?.version)(navigator.userAgent.match(/(Version\/(?<safariVersion>[\d.]+))|(\/(?<version>[\d.]+)$)/)?.groups);
+		(async () => {
+			document.querySelector("#browser-info").textContent = await (async () => {
+				let browser = navigator.userAgentData?.brands?.find(({ brand }) => ["Chromium", "Firefox", "Safari"].includes(brand))?.brand;
+				let version = (await navigator.userAgentData?.getHighEntropyValues?.(["uaFullVersion"]))?.uaFullVersion;
 
-		{ /// service worker, update & PWA
-			const registerServiceWorker = () => navigator.serviceWorker?.register("./service-worker.js", { scope: "./", updateViaCache: "all" });
-			registerServiceWorker();
+				if (!browser || !version) {
+					let /** @type {RegExpMatchArray} */ match;
+					if (match = navigator.userAgent.match(/Chrome\/(?<version>[\d.]+) /)) {
+						browser ??= "Chromium";
+					} else if (match = navigator.userAgent.match(/Version\/(?<version>[\d.]+) /)) {
+						browser ??= "Safari";
+					} else if (match = navigator.userAgent.match(/Firefox\/(?<version>[\d.]+)$/)) {
+						browser ??= "Firefox";
+					} else {
+						browser ??= "unknown browser";
+					}
+					version ??= match.groups?.version;
+				}
 
-			navigator.serviceWorker?.addEventListener("message", async ({ data }) => {
-				if (data.message === "updateAvailable") registerServiceWorker();
-			});
+				version ??= "[unknown version]";
 
-			const checkReadyState = async () => {
-				if (document.readyState === "complete" && navigator.onLine) (await navigator.serviceWorker?.ready)?.active.postMessage({ message: "checkForUpdate" });
-			};
-			checkReadyState();
-			document.addEventListener("readystatechange", checkReadyState);
-		}
+				return `${browser} ${version}`;
+			})();
+		})();
 	</script>
 </head>
 
 <body>
-	<noscript>
-		Please enable JavaScript to view this site.
-		<hr />
-	</noscript>
-
-	<version></version>
+	<div id="browser-info" aria-label="information about the browser and its version"></div>
 </body>
 
 </html>
